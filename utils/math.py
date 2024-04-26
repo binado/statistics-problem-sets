@@ -84,12 +84,8 @@ def moment(pdf: np.ndarray, x: np.ndarray, n: int, central=True) -> float:
     Returns:
         float: nth order moment
     """  
-    xmu = x
-    if central and n > 1:
-        mu = moment(pdf, x, 1)
-        xmu -= mu
-    return np.trapz(pdf * xmu ** n, x)
-
+    mu = moment(pdf, x, 1) if central and n > 1 else 0.
+    return np.trapz(pdf * (x - mu) ** n, x)
 
 
 def beta_pdf(x: np.ndarray, alpha: float, beta: float):
