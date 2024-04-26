@@ -95,8 +95,9 @@ def beta_pdf(x: np.ndarray, alpha: float, beta: float):
 
 def fftconvolution(pdf, n: int):
     """Compute the PDF of the average using FFT convolution."""
+    l = len(pdf)
     # This is the correct length of the n times convolved pdf
-    convolved_size = n * len(pdf) - n + 1
+    convolved_size = n * l - n + 1
     # Use it to compute closest optimal length for fast FFT computation
     fft_size = next_fast_len(convolved_size, real=True)
 
@@ -107,6 +108,7 @@ def fftconvolution(pdf, n: int):
     result_fft = pdf_fft ** n
 
     # Invert FFT to obtain the (unnormalized) PDF of the sum
-    result = irfft(result_fft, fft_size)
+    # Resample back to the original array size
+    result = irfft(result_fft, l)
 
-    return result, fft_size
+    return result
