@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
+from scipy.special import gamma
+from scipy.fft import rfft, irfft, next_fast_len
 
 def gaussian(x, mu: float, sigma: float):
     norm = np.sqrt(2 * np.pi) * sigma
@@ -21,10 +23,14 @@ def safe_exp(x):
     xmax = np.max(x)
     return np.exp(xmax) * np.exp(x - xmax)
 
-def normalize(y, x):
-    return y / np.trapz(y, x)
+def normalize(y: np.ndarray, x=None, discrete=False) -> np.ndarray:
+    if not discrete and x is None:
+        raise ValueError
 
-def quantile(pdf, x, qs, discrete=False):
+    norm = np.sum(y) if discrete else np.trapz(y, x)
+    return y / norm
+
+def quantile(pdf: np.ndarray, x: np.ndarray, qs, discrete=False) -> np.ndarray:
     cdf = np.cumsum(pdf) if discrete else cumulative_trapezoid(pdf, x=x)
     return x[np.searchsorted(cdf, qs)]
 
@@ -64,3 +70,47 @@ def hdi(pdf, x, alpha):
             minl = l
             mini = i
             maxalpha = alphai
+
+
+def moment(pdf: np.ndarray, x: np.ndarray, n: int, central=True) -> float:
+    """Calculate nth order moment of a given pdf along x.
+
+    Args:
+        pdf (np.npdarray): pdf valued at x
+        x (np.ndarray): domain of integration
+        n (int): moment order
+        central (bool, optional): compute central moment. Defaults to True.
+
+    Returns:
+        float: nth order moment
+    """  
+    xmu = x
+    if central and n > 1:
+        mu = moment(pdf, x, 1)
+        xmu -= mu
+    return np.trapz(pdf * xmu ** n, x)
+
+
+
+def beta_pdf(x: np.ndarray, alpha: float, beta: float):
+    domain = (0 < x) & (x < 1)
+    norm = gamma(alpha + beta) / gamma(alpha) / gamma(beta)
+    return domain * norm * x ** (alpha - 1) * (1 - x) ** (beta - 1)
+
+def fftconvolution(pdf, n: int):
+    """Compute the PDF of the average using FFT convolution."""
+    # This is the correct length of the n times convolved pdf
+    convolved_size = n * len(pdf) - n + 1
+    # Use it to compute closest optimal length for fast FFT computation
+    fft_size = next_fast_len(convolved_size, real=True)
+
+    # Perform FFT on the PDF
+    pdf_fft = rfft(pdf, fft_size)
+
+    # n-times convolved F[pdf]
+    result_fft = pdf_fft ** n
+
+    # Invert FFT to obtain the (unnormalized) PDF of the sum
+    result = irfft(result_fft, fft_size)
+
+    return result, fft_size
