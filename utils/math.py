@@ -60,7 +60,7 @@ def hdi(pdf, x, alpha):
                 # If this condition is met, i is already too high
                 # and we can terminate
                 # Return median and hdi values in x
-                return x[median], x[mini], x[mini + minl]
+                return median, mini, mini + minl
 
             alphai = cdf[i + l] - cdf[i]
             if l > minl:
